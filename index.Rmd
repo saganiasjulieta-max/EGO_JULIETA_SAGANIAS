@@ -1,0 +1,204 @@
+---
+title: "ESTUDIO SAG"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+```
+
+ESTUDIO SAG
+==============
+
+
+
+
+
+
+
+
+
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### AVANCES DE OBRA
+
+```{r}
+# --- Paso 0: Instalación y Carga de Librerías ---
+# Si no las tienes instaladas, ejecuta:
+# install.packages("ggplot2")
+# install.packages("scales")
+
+library(ggplot2)
+library(scales)
+
+# --- Paso 1: Crear los Datos ---
+meses <- month.name[1:12] # Nombres de los meses
+avance_teorico_mensual <- rep(100 / 12, 12) # Avance Teórico (8.33% por mes)
+avance_real_mensual <- c(20, 5, 15, 30, 8, 40, 19, 35, 25, 0, 0, 0) # Avance Real
+
+# Crear el dataframe base
+df <- data.frame(
+  Mes = factor(meses, levels = meses), # Asegura el orden correcto de los meses
+  Teorico = avance_teorico_mensual,
+  Real = avance_real_mensual
+)
+
+# --- Paso 2: Transformar los datos a formato 'largo' (Alternativa a 'pivot_longer' de tidyr) ---
+
+# Usaremos la función 'reshape' del R base
+df_long <- reshape(
+  df,
+  varying = c("Teorico", "Real"),
+  v.names = "Porcentaje",
+  timevar = "Tipo_Avance",
+  times = c("Teorico", "Real"),
+  new.row.names = 1:(nrow(df) * 2),
+  direction = "long"
+)
+
+# Limpieza y preparación final del dataframe
+df_long$Tipo_Avance <- factor(df_long$Tipo_Avance)
+df_long <- df_long[, c("Mes", "Tipo_Avance", "Porcentaje")] # Seleccionar columnas relevantes
+
+
+# --- Paso 3: Crear el Gráfico con ggplot2 ---
+ggplot(df_long, aes(x = Mes, y = Porcentaje / 100, fill = Tipo_Avance)) +
+  
+  # Barras agrupadas
+  geom_bar(stat = "identity", position = position_dodge(width = 0.8), width = 0.7) +
+  
+  # Etiquetas de valor sobre las barras
+  geom_text(
+    aes(label = paste0(round(Porcentaje, 1), "%")),
+    position = position_dodge(width = 0.8),
+    vjust = -0.5,
+    size = 3.5
+  ) +
+  
+  # Personalización
+  scale_y_continuous(
+    labels = percent, # Formatear el eje Y como porcentajes
+    limits = c(0, max(df_long$Porcentaje / 100) * 1.1)
+  ) +
+  
+  scale_fill_manual(
+    values = c("Teorico" = "#1F78B4", "Real" = "#33A02C"), # Colores personalizados
+    name = "Tipo de Avance"
+  ) +
+  
+  labs(
+    title = "Avance de Obra: Teórico vs. Real (Distribución Mensual)",
+    x = "Mes",
+    y = "Porcentaje de Avance",
+    caption = "Datos de Avance Mensual (no acumulado)."
+  ) +
+  
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    legend.position = "bottom"
+  )
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### UBICACION
+
+```{r}
+library(leaflet)
+leaflet() %>%
+  addTiles() %>%
+  addMarkers(lng=-64.2512233, lat=-27.8015324, popup="The birthplace of R")
+```
+
+
+
+
+
+```{r}
+
+```
+
+### Chart C
+
+```{r}
+# --- 0. Cargar Librerías ---
+# Si necesitas instalarlas, descomenta y ejecuta:
+# install.packages(c("ggplot2", "scales"))
+library(ggplot2)
+library(scales)
+
+# --- 1. Definir los Datos del Proyecto ---
+
+# Supongamos un proyecto de 15 días/sprints y 100 puntos de trabajo iniciales.
+dias <- 0:15
+puntos_trabajo_inicial <- 100
+
+# Trabajo Restante REAL (los puntos de trabajo que quedan al final de cada día)
+# (Debe empezar en 100 y terminar idealmente en 0)
+trabajo_restante_real <- c(100, 95, 88, 75, 70, 65, 50, 45, 40, 35, 30, 25, 20, 15, 10, 0)
+# NOTA: En este ejemplo, el proyecto TERMINA a tiempo (el día 15 llega a 0).
+
+# Línea Teórica (Ideal) - Descenso lineal
+descenso_diario_ideal <- puntos_trabajo_inicial / max(dias)
+trabajo_restante_teorico <- puntos_trabajo_inicial - (dias * descenso_diario_ideal)
+
+# Crear el Data Frame
+df_burndown <- data.frame(
+  Dia = dias,
+  Teorico = trabajo_restante_teorico,
+  Real = trabajo_restante_real
+)
+
+# --- 2. Crear el Gráfico Burndown con ggplot2 ---
+ggplot(df_burndown, aes(x = Dia)) +
+  
+  # Línea Ideal (Teórica) - Color rojo, punteada
+  geom_line(aes(y = Teorico, color = "Teórico"), linetype = "dashed", size = 1) +
+  geom_point(aes(y = Teorico, color = "Teórico"), size = 2) +
+  
+  # Línea Real (Actual) - Color azul, sólida
+  geom_line(aes(y = Real, color = "Real"), size = 1.2) +
+  geom_point(aes(y = Real, color = "Real"), size = 3) +
+  
+  # Personalización de la leyenda y colores
+  scale_color_manual(
+    name = "Avance",
+    values = c("Teórico" = "#E31A1C", "Real" = "#1F78B4") # Colores de líneas
+  ) +
+  
+  # Personalización de Ejes y Títulos
+  labs(
+    title = "Gráfico Burndown de Puntos de Trabajo",
+    x = "Días Transcurridos del Sprint/Proyecto",
+    y = "Puntos de Trabajo Restantes",
+    caption = paste0("Total Inicial: ", puntos_trabajo_inicial, " puntos. Plazo: ", max(dias), " días.")
+  ) +
+  
+  # Asegurar que los ejes Y y X empiecen en 0
+  scale_y_continuous(limits = c(0, puntos_trabajo_inicial * 1.05), breaks = pretty_breaks(n = 10)) +
+  scale_x_continuous(breaks = dias) +
+  
+  # Estilo final
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    legend.position = "bottom"
+  )
+```
+
+
+
+
+
+
+
+
+
+
